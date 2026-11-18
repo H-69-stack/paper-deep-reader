@@ -182,6 +182,11 @@ def plain(text: str) -> str:
 # ---------------------------------------------------------------- 公式渲图
 def sanitize_for_mathtext(expr: str) -> str:
     """把 mathtext 不支持的常见命令降级成它能渲染的形式（只用于画图，不改原文）。"""
+    # \tag{式(1)} / \label{...} 是编号用的，mathtext 不认，直接去掉
+    expr = re.sub(r"\\tag\*?\{[^}]*\}", "", expr)
+    expr = re.sub(r"\\label\{[^}]*\}", "", expr)
+    # \mathbb{1} 在 mathtext 里渲染不了，退成粗体 1
+    expr = expr.replace("\\mathbb{1}", "\\mathbf{1}")
     # \underbrace{X}_{Y} → X\ (Y)，\overbrace 同理
     for cmd in ("underbrace", "overbrace"):
         pattern = re.compile(r"\\" + cmd + r"\{")
@@ -218,7 +223,9 @@ def sanitize_for_mathtext(expr: str) -> str:
                     k += 1
                 note = rest[start2 + 2:k]
                 rest = rest[k + 1:]
-            expr = expr[:start] + inner + (r"\ \left(" + note + r"\right)" if note else "") + rest
+            # 只有纯 ASCII 的说明文字才保留括号；中文说明抹掉后剩空括号会被 mathtext 拒
+            keep_note = bool(note) and not re.search(r"[\u3400-\u4dbf\u4e00-\u9fff]", note)
+            expr = expr[:start] + inner + (r"\ (" + note + ")" if keep_note else "") + rest
     # \boxed{X} → X
     expr = re.sub(r"\\boxed\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}", r"\1", expr)
     # \text{纯英文} → \mathrm{...}；含中文的 \text 直接删掉外层
@@ -228,6 +235,21 @@ def sanitize_for_mathtext(expr: str) -> str:
     expr = expr.replace(r"\left", "").replace(r"\right", "")
     expr = expr.replace(r"\big", "").replace(r"\Big", "")
     expr = re.sub(r"\\(operatorname|mathrm|mathbf|mathit|mathcal)\{([^{}]*)\}", lambda m: "\\" + m.group(1) + "{" + m.group(2) + "}", expr)
+    # mathtext 只认完整写法：\leq/\geq 而不是 \le/\ge；\lesssim、\middle 也不认
+    expr = expr.replace(r"\lesssim", r"\leq").replace(r"\gtrsim", r"\geq")
+    expr = re.sub(r"\\le(?![a-zA-Z])", r"\\leq", expr)
+    expr = re.sub(r"\\ge(?![a-zA-Z])", r"\\geq", expr)
+    expr = expr.replace(r"\middle|", "|").replace(r"\middle", "")
+    # mathtext 不支持 \begin{cases}，把分支压成一行：{A, x; B, y}
+    def _cases(m):
+        rows = [r.replace("&", "").strip() for r in m.group(1).split(r"\\")]
+        return r"\ ".join(r + r";\ " for r in rows if r).rstrip(r"\ ;")
+    expr = re.sub(r"\\begin\{cases\}(.*?)\\end\{cases\}", _cases, expr, flags=re.S)
+    # 内层残留的中文没法渲染（会变成方框），直接抹掉；抹完留下空 \mathrm{} 也一并去掉
+    expr = re.sub(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]+", "", expr)
+    expr = re.sub(r"\\(operatorname|mathrm|mathbf|mathit|mathcal)\{\s*\}", "", expr)
+    # \underbrace 拆完后可能留下空下标 _{ }，会造成 "Double subscript"，一并清掉
+    expr = re.sub(r"_\{\s*\}", "", expr)
     return expr
 
 
@@ -253,14 +275,13 @@ def render_formula(tex: str, out_png: Path) -> bool:
     if not body:
         return False
 
-    # mathtext 只认 $...$；把 latex 环境包裹成普通数学文本
-    expr = body
-    if "\\begin{" in expr:  # align / cases 等环境 mathtext 不一定支持，退回原文
+    # mathtext 只认 $...$；先清洗，清洗后仍有 latex 环境（align 等）才退原文
+    expr = body.replace("\n", " ")
+    cleaned = sanitize_for_mathtext(expr)
+    if "\\begin{" in cleaned:
         return False
-    expr = expr.replace("\n", " ")
 
     candidates = [expr]
-    cleaned = sanitize_for_mathtext(expr)
     # 清洗后若还剩中文，mathtext 会渲染成方框，不如老实退回文本
     if cleaned != expr and not CJK_RE.search(cleaned):
         candidates.append(cleaned)

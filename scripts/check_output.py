@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """精讲成品机械自检（check_output.py）。
 
@@ -512,8 +512,8 @@ def check_algorithm(doc, min_total, min_method):
 # ---------------------------------------------------------------- 图表
 TABLE_SEP_RE = re.compile(r"^\s*\|[\s:|-]+\|\s*$", re.M)
 IMAGE_RE = re.compile(r"^!\[([^\]]*)\]\(\s*([^)\s]+)", re.M)
-TABLE_CAP_RE = re.compile(r"表\s*(\d+)")
-FIG_CAP_RE = re.compile(r"图\s*(\d+)")
+TABLE_CAP_RE = re.compile(r"(?<![词代发列报仪外目字图])表\s*(\d+)")
+FIG_CAP_RE = re.compile(r"(?<![试意企蓝构绘版挂地草])图\s*(\d+)")
 
 
 def check_visuals(doc, profile):
