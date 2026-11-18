@@ -24,7 +24,7 @@ license: MIT
 
 - `<skill目录>/references/deep-reading-template.md` — 输出结构与硬性要求（**必读**）
 - `<skill目录>/references/field-glossary.md` — 术语库索引（**先读它，再挑分册**）
-- `<skill目录>/references/glossary/` — 9 个按领域拆分的术语分册，按需只读 2–3 册
+- `<skill目录>/references/glossary/` — 13 个按领域拆分的术语分册（含轴承 `bearing.md`、电机 `motor.md`、导电滚环 `rcc.md`、液压电磁阀 `valve.md` 四本对象专项册），按需只读 2–3 册
 - `<skill目录>/scripts/extract_pdf.py` — 本地 PDF 提取 + 三项诊断
 - `<skill目录>/scripts/check_output.py` — 交付前机械校验
 - `<skill目录>/scripts/export_docx.py` — 导出 Word（公式渲成图片插入）
@@ -90,7 +90,7 @@ license: MIT
 ### Step 3：加载模板与术语库（必读，但别全读）
 
 - `<skill目录>/references/deep-reading-template.md` — **强制执行**：第0～9节共 **10节输出结构**、**10条硬性要求**、三段式规范、数字例子设计原则、**18项质量自检清单**、论文类型路由、标题层级映射、每节字数预算、速览模式。以该文件为准，本文件与它冲突时听它的（因为 `scripts/check_output.py` 断言的是它）。
-- `<skill目录>/references/field-glossary.md` — 只有约 30 行的索引与路由表。先按论文方向挑 **2–3 个**分册读，不要把 9 册全读进来挤占论文本身。
+- `<skill目录>/references/field-glossary.md` — 只有约 50 行的索引与路由表。先按论文方向挑 **2–3 个**分册读，不要把 13 册全读进来挤占论文本身。写轴承/电机/滚环/电磁阀时优先读对应的对象专项册（`bearing.md` / `motor.md` / `rcc.md` / `valve.md`），`objects.md` 只在需要整体框架时读。
 - 术语不在库里时，按同样格式现场补一条：定义 + 比喻 + 中英对照 + 极小数字例子。
 
 ### Step 4：逐节输出精讲
