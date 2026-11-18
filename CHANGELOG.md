@@ -3,6 +3,43 @@
 版本号只记在 README 和本文件：DSH 的 SKILL.md frontmatter 目前没有 `version` 字段的通用约定，
 写进 frontmatter 不会被读取，反而会让人误以为它生效。
 
+## v0.6.0 — 2026-11-18
+
+用户要求"继续补其他对象（齿轮箱、泵、液压缸）"并把术语库做成"可检索的索引页"。这一版把对象专项册从 4 本扩到 7 本，并给术语库加了一个能离线搜索的单页入口。
+
+### Added
+
+- `references/glossary/gearbox.md`（34 条）：齿轮箱专项。齿数/转频/传动比、`GMF = z·fr` 与边带族、齿根裂纹/断齿/点蚀/磨损/胶合、
+  齿隙与啮合刚度、传递误差、TSA 与残余信号、倒谱、阶次分析、行星轮系频率（太阳轮/行星轮/齿圈/行星架）、装配偏心、雨流计数。
+  手算例子：z1=20、fr1=25 Hz → GMF1=500 Hz；z2=40 → fr2=12.5 Hz；z3=18 → GMF2=225 Hz；12.5 Hz 边带间距指向中间轴；倒谱峰 0.08 s。
+- `references/glossary/pump.md`（32 条）：泵专项。离心/容积/齿轮/柱塞/叶片泵、Q–H 曲线、比转速、`BPF = z·fr`、
+  汽蚀与 NPSH、气缚、干运转、密封环间隙与容积效率、流量/压力脉动、喘振、轴向力、机械密封、联轴器不对中。
+  手算例子：4 极 50 Hz、s=2%、7 叶片 → 1470 rpm、24.5 Hz、BPF 171.5 Hz；5 MPa 容积效率 0.90 / 10 MPa 0.75。
+- `references/glossary/cylinder.md`（32 条）：液压缸专项。有效面积、`F = p·A`、`v = Q/A`、内/外泄漏、保压试验与沉降、
+  爬行三要素、静动摩擦差、密封件、支承环、镀层、缓冲、双缸同步、空气混入、拉缸。手算例子：D=50/d=28 mm、10 MPa、20 L/min →
+  F1 19.6 kN、F2 13.5 kN、v1 170 mm/s；保压 10→9.2 MPa/1 min ≈1 mL/min 内泄漏。
+- `scripts/build_glossary_html.py`：把 `references/glossary/*.md` 编译成单文件 `references/glossary-index.html`
+  （无外部依赖、可离线、可打印）。支持一册多表且表头不同，自动解析索引路由表与各册"数字例子"。
+- `references/glossary-index.html`：16 册 562 条的检索页。搜索框（`/` 聚焦、Esc 清空）、分册标签过滤、
+  命中计数、关键词高亮、路由表折叠、每册数字例子可展开、打印样式。
+
+### Changed
+
+- `references/field-glossary.md`：分册 13 → **16**、约 470 → **约 560 条**；路由表加齿轮箱/泵/液压缸三行；
+  分册清单按"对象类 7 册 / 方法与基础 9 册"分组；顶部新增检索页入口说明。
+- `SKILL.md` 资源清单：对象专项册 4 本 → 7 本，新增 `references/glossary-index.html`、`scripts/build_glossary_html.py`、
+  `scripts/make_figures.py` 三行；工作流提示同步为"16 册、只读 2–3 册、查词用检索页"。
+- `README.md`：结构树加 `glossary-index.html` 与 `build_glossary_html.py`，分册数 13 → 16，"已知限制"改为约 560 条 16 册；
+  脚本用法新增"改了术语分册后重新生成检索页"一条。
+- `assets/deepseek-desktop-agent.json`：`system_prompt` 恢复并更新"术语库"段（16 册约 560 条、7 本对象专项册、
+  检索页用法），长度 3230 → 3647 字符。
+
+### Verified
+
+- `scripts/lint_skill.py`：35 项全过、0 警告、0 失败（索引与分册文件清单一致）。
+- `evals/run_evals.py`：13/13 案例符合预期。
+- `scripts/build_glossary_html.py`：16 册、562 条、路由 18 行、59 KB。
+
 ## v0.5.0 — 2026-11-18
 
 用户要求"术语库继续往 PHM 细分"，并明确 **RCC = 导电滚环（Conductive Rolling Ring）**。这一版把术语库从"按主题分册"改成"主题册 + 对象专项册"，四个研究对象各有一本。

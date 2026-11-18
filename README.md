@@ -39,8 +39,9 @@ LICENSE                              # MIT
 SKILL.md 旁边的三个目录：
 references/
   deep-reading-template.md           # 必修：10节结构 + 10条硬性要求 + 三段式 + 18项自检 + 类型路由/层级/预算/速览/模式路由/图表规范
-  field-glossary.md                  # 术语库索引（按方向挑分册，约470条 / 13册）
-  glossary/                          # 13个分册：signal / bearing / motor / rcc / valve / objects / phm / ml / dl / llm-agent / metrics / translation / symbols
+  field-glossary.md                  # 术语库索引（按方向挑分册，约560条 / 16册）
+  glossary-index.html                # 上面16册编译成的单文件检索页（浏览器打开可搜索）
+  glossary/                          # 16个分册：对象7册（bearing/motor/rcc/valve/gearbox/pump/cylinder）+ 方法9册（objects/phm/signal/ml/dl/llm-agent/metrics/translation/symbols）
 assets/
   deepseek-desktop-agent.json        # DeepSeek 桌面客户端"智能体"配置，可手动复制字段导入
 scripts/
@@ -50,6 +51,7 @@ scripts/
   make_figures.py                    # 按 JSON 生成结构图/条形图/折线图/热图（diagram/bar/line/heat）
   export_docx.py                     # Markdown → .docx（公式渲成图片、插图自动嵌入）
   export_tex.py                      # Markdown → .tex（XeLaTeX / Overleaf 可直接编译，插图复制进 figs/）
+  build_glossary_html.py             # references/glossary/*.md → 单文件检索页 glossary-index.html
 evals/
   README.md                          # 回归测试说明
   run_evals.py                       # 跑全部案例：合格骨架放行、坏样本拦住
@@ -110,7 +112,10 @@ python scripts/check_output.py 短论文-精讲.md --min-total 3000 --skip-share
 python scripts/export_docx.py 某某论文-精讲.md
 python scripts/export_tex.py  某某论文-精讲.md
 
-# 5. 改过规则或脚本后自检
+# 5. 改了术语分册后，重新生成检索页
+python scripts/build_glossary_html.py
+
+# 6. 改过规则或脚本后自检
 python scripts/lint_skill.py
 python evals/run_evals.py
 ```
@@ -132,7 +137,7 @@ python evals/run_evals.py
 
 - 需要能拿到**论文全文**；扫描件没有文本层时无法读取，需要先 OCR 或提供文本（`extract_pdf.py` 会诊断出来并说明，不会硬编内容）。
 - 定位是"教学型长文"，输出较长（单篇论文精讲一般 ≥4500 字），不适合只要一句话结论的场景。
-- 术语库偏向 **PHM / 故障诊断 / 信号处理**（约 470 条，13 个分册），其中 `bearing.md` / `motor.md` / `rcc.md` / `valve.md` 是对象专项册（RCC = 导电滚环）；其他领域论文走"领域翻译"，但相距过远时只做迁移性分析。
+- 术语库偏向 **PHM / 故障诊断 / 信号处理**（约 560 条，16 个分册），其中 7 册是对象专项册（滚动轴承 / 电机 / 导电滚环 RCC / 液压电磁阀 / 齿轮箱 / 泵 / 液压缸）；其他领域论文走"领域翻译"，但相距过远时只做迁移性分析。想快速查词可打开 `references/glossary-index.html`。
 - `check_output.py` 查得住结构与数字（节完整性、三段式、编号对齐、字数、禁用词、算法模式的章结构），**查不住内容对不对**；那部分仍靠模型判断。
 - 每节字数预算是启发式区间，不是实测统计。
 - 图表检查只数数量和编号，**判断不了图好不好看、表有没有信息量**；图是脚本生成的，复杂示意图仍可能需要手工微调 JSON。
@@ -140,7 +145,7 @@ python evals/run_evals.py
 
 ## 版本
 
-当前 v0.5.0（2026-11-18）。变更明细见 [CHANGELOG.md](CHANGELOG.md)。
+当前 v0.6.0（2026-11-18）。变更明细见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## License
 
