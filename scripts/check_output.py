@@ -509,6 +509,68 @@ def check_algorithm(doc, min_total, min_method):
         warn("A8", "没有总结章", "建议加一章『设计思想一图流』收尾")
 
 
+# ---------------------------------------------------------------- 图表
+TABLE_SEP_RE = re.compile(r"^\s*\|[\s:|-]+\|\s*$", re.M)
+IMAGE_RE = re.compile(r"^!\[([^\]]*)\]\(\s*([^)\s]+)", re.M)
+TABLE_CAP_RE = re.compile(r"表\s*(\d+)")
+FIG_CAP_RE = re.compile(r"图\s*(\d+)")
+
+
+def check_visuals(doc, profile):
+    """S13 表格够不够 / S14 有没有插图 / S15 图表有没有编号和被正文引用。
+
+    论文精讲里表格少、没图，读者会觉得"不形象"——这条就是拦这个的。
+    算法详解模式的旧习惯是纯文字加代码，所以只降级为 WARN。
+    """
+    text = doc.text
+    n_tables = len(TABLE_SEP_RE.findall(text))
+    images = IMAGE_RE.findall(text)
+    n_figs = len(images)
+
+    # S13 表格
+    if profile == "paper":
+        if n_tables < 3:
+            fail("S13", f"表格只有 {n_tables} 张（≥3）", "对比、超参、形状、消融各一张，读者才看得下去")
+        else:
+            ok("S13", f"表格 {n_tables} 张")
+    else:
+        if n_tables < 3:
+            warn("S13", f"表格只有 {n_tables} 张（建议 ≥3）", "加对比表/超参表能省很多解释文字")
+        else:
+            ok("S13", f"表格 {n_tables} 张")
+
+    # S14 插图
+    if n_figs == 0:
+        if profile == "paper":
+            fail("S14", "没有任何插图", "用 make_figures.py 出结构图/热图/对比图，写 ![](figs/xxx.png)")
+        else:
+            warn("S14", "没有插图（建议至少 1 张）", "结构图或流程图能显著提升可读性")
+    else:
+        ok("S14", f"插图 {n_figs} 张")
+
+    # S15 编号与引用
+    # 『论文图3』『论文表2』是引用原文编号，不算本篇自己的图表编号
+    scan = re.sub(r"论文\s*[图表]\s*\d+", "", text)
+    problems = []
+    for alt, path in images:
+        if not FIG_CAP_RE.match(alt.strip()):
+            problems.append(f"插图 {path} 的图注不是『图 N …』开头")
+    if n_tables and not TABLE_CAP_RE.search(text):
+        problems.append("表格没有编号（表 1、表 2 …）")
+    for num in sorted({n for n in FIG_CAP_RE.findall(scan)}, key=int):
+        # 图注一次 + 正文至少引用一次 = 至少出现两次
+        if len(re.findall(rf"图\s*{num}(?!\d)", scan)) < 2:
+            problems.append(f"图 {num} 没有在正文里被引用")
+    for num in sorted({n for n in TABLE_CAP_RE.findall(scan)}, key=int):
+        if len(re.findall(rf"表\s*{num}(?!\d)", scan)) < 2:
+            problems.append(f"表 {num} 没有在正文里被引用")
+    if problems:
+        warn("S15", "图表编号/引用有问题：" + "；".join(problems[:4]),
+             "图注用『图 1 xxx』开头，正文里写『见图 1』『见表 2』")
+    else:
+        ok("S15", "图表编号连续且都在正文里被引用")
+
+
 # ---------------------------------------------------------------- brief 模式
 def check_brief(doc):
     text = doc.text
@@ -571,6 +633,7 @@ def main():
         total, method, share = check_length(doc, args.min_total, args.min_method, args.skip_share, profile)
         check_terms(doc)
         check_placeholders(doc)
+        check_visuals(doc, profile)
     else:
         check_sections(doc)
         check_heading_levels(doc)
@@ -584,6 +647,7 @@ def main():
         check_citations(doc)
         check_speculation(doc)
         check_placeholders(doc)
+        check_visuals(doc, profile)
 
     fails = [r for r in RESULTS if r[0] == "FAIL"]
     warns = [r for r in RESULTS if r[0] == "WARN"]

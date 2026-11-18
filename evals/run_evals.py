@@ -92,6 +92,22 @@ def break_formula_index(text):
     return "\n".join(ln for ln in text.split("\n") if "| 式(2) |" not in ln)
 
 
+def strip_tables(text):
+    """删掉所有表格行和表注（用于制造 S13 表格不足）。"""
+    keep = []
+    for ln in text.split("\n"):
+        s = ln.strip()
+        if s.startswith("|") or s.startswith("**表 "):
+            continue
+        keep.append(ln)
+    return "\n".join(keep)
+
+
+def strip_images(text):
+    """删掉所有插图行（用于制造 S14 没有插图）。"""
+    return "\n".join(ln for ln in text.split("\n") if not ln.startswith("!["))
+
+
 def drop_chapter(text, num):
     """删掉算法模式的整章（`## 第N章 …`），用于制造 A1 章数不足。"""
     lines = text.split("\n")
@@ -139,6 +155,12 @@ CASES = [
     dict(name="坏样本：速查表缺 式(2) → S9 失败",
          source="good-minimal.md", flags=SKELETON_FLAGS, expect=1,
          mutate=break_formula_index),
+    dict(name="坏样本：删光表格 → S13 失败",
+         source="good-minimal.md", flags=SKELETON_FLAGS, expect=1,
+         mutate=strip_tables),
+    dict(name="坏样本：删掉插图 → S14 失败",
+         source="good-minimal.md", flags=SKELETON_FLAGS, expect=1,
+         mutate=strip_images),
     dict(name="坏样本：留 TODO → S12 失败",
          source="good-minimal.md", flags=SKELETON_FLAGS, expect=1,
          mutate=lambda t: append_to_section(t, 6, "TODO: 补实验数据。")),

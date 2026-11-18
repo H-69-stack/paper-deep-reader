@@ -10,7 +10,7 @@
 检查项：
   1. SKILL.md frontmatter 完整性（name / description / license）
   2. 所有被引用的资源路径真实存在（防改名/删文件后留下死链）
-  3. 模板自身的结构自洽（10节 / 10条硬性要求 / 16项自检 / 5条降级）
+  3. 模板自身的结构自洽（10节 / 10条硬性要求 / 18项自检 / 5条降级）
   4. 三份规则副本的关键数字一致（防漂移）
   5. references/glossary 分册与 field-glossary.md 索引同步
   6. README 是否覆盖新增目录（脚本、评测、许可证、更新日志）
@@ -43,7 +43,7 @@ LICENSE = ROOT / "LICENSE"
 EXPECT = {
     "sections": 10,
     "hard_rules": 10,
-    "checklist": 16,
+    "checklist": 18,
     "degradations": 5,
     "min_total": 4500,
     "min_method": 2600,

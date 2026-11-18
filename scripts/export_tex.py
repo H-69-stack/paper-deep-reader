@@ -28,6 +28,8 @@ FORMULA_BLOCK_RE = re.compile(r"^\$\$\s*$")
 TABLE_SEP_RE = re.compile(r"^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$")
 BULLET_RE = re.compile(r"^\s*([-*+]|\d+[.)])\s+(.*)$")
 QUOTE_RE = re.compile(r"^>\s?(.*)$")
+# ![图 1 xxx](figs/fig1.png)
+IMAGE_RE = re.compile(r"^!\[([^\]]*)\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\")?\s*\)$")
 
 PREAMBLE = r"""% !TEX program = xelatex
 % 由 paper-deep-reader/scripts/export_tex.py 生成；请用 XeLaTeX 编译（Overleaf 里把 Compiler 设为 XeLaTeX）。
@@ -169,6 +171,13 @@ def parse_blocks(text: str):
             i += 1
             continue
 
+        m = IMAGE_RE.match(stripped)
+        if m:
+            flush_para()
+            blocks.append(("img", (m.group(1).strip(), m.group(2).strip())))
+            i += 1
+            continue
+
         if stripped in {"---", "***", "___"}:
             flush_para()
             blocks.append(("hr", None))
@@ -226,10 +235,10 @@ def table_rows(raw_rows: list[str]) -> list[list[str]]:
     return rows
 
 
-def convert(md_text: str) -> tuple[str, dict]:
+def convert(md_text: str, base_dir: Path | None = None, fig_dir: Path | None = None) -> tuple[str, dict]:
     blocks = parse_blocks(md_text)
     out: list[str] = []
-    stats = {"h1": 0, "table": 0, "code": 0, "math": 0}
+    stats = {"h1": 0, "table": 0, "code": 0, "math": 0, "figure": 0, "figure_missing": 0}
 
     for kind, payload in blocks:
         if kind == "h":
@@ -280,6 +289,32 @@ def convert(md_text: str) -> tuple[str, dict]:
                     out.append("\\midrule\n")
             out.append("\\bottomrule\n\\end{tabular}}\n\\end{table}\n")
             stats["table"] += 1
+        elif kind == "img":
+            alt, rel = payload
+            src = (base_dir / rel).resolve() if base_dir else Path(rel).resolve()
+            if src.is_file():
+                # 复制到 tex 同级的 figs/ 下，保证 .tex 换台机器也能编译
+                if fig_dir is not None:
+                    fig_dir.mkdir(parents=True, exist_ok=True)
+                    dst = fig_dir / src.name
+                    try:
+                        if src.resolve() != dst.resolve():
+                            dst.write_bytes(src.read_bytes())
+                    except OSError:
+                        pass
+                    tex_path = f"figs/{src.name}"
+                else:
+                    tex_path = src.as_posix()
+                out.append("\\begin{figure}[htbp]\n\\centering\n")
+                out.append(f"\\includegraphics[width=\\linewidth]{{{tex_path}}}\n")
+                if alt:
+                    out.append(f"\\caption{{{inline(alt)}}}\n")
+                out.append("\\end{figure}\n")
+                stats["figure"] += 1
+            else:
+                out.append(f"% [缺图] {alt or rel}：找不到 {rel}\n")
+                out.append(f"\\textbf{{[缺图] {inline(alt or rel)}}}\n")
+                stats["figure_missing"] += 1
         elif kind == "hr":
             out.append("\\bigskip\\hrule\\bigskip\n")
 
@@ -307,7 +342,7 @@ def main(argv: list[str] | None = None) -> int:
             first_h1 = m.group(1).strip()
             break
 
-    body, stats = convert(text)
+    body, stats = convert(text, md_path.parent, md_path.parent / "figs")
     title = args.title or first_h1 or md_path.stem
     doc = (
         PREAMBLE.replace("@@TITLE@@", esc(title)).replace("@@AUTHOR@@", esc(args.author))
@@ -317,7 +352,9 @@ def main(argv: list[str] | None = None) -> int:
     out = Path(args.out) if args.out else md_path.with_suffix(".tex")
     out.write_text(doc, encoding="utf-8")
     print(f"已生成 {out}")
-    print(f"  公式 {stats['math']} 个；表格 {stats['table']} 个；代码块 {stats['code']} 个")
+    print(f"  公式 {stats['math']} 个；表格 {stats['table']} 个；代码块 {stats['code']} 个；插图 {stats['figure']} 张")
+    if stats["figure_missing"]:
+        print(f"  警告：有 {stats['figure_missing']} 张插图找不到文件，已在 tex 里用 % 注释标注。")
     print("  编译方式：xelatex 文件名.tex（Overleaf 里把 Compiler 设为 XeLaTeX；ctexart 自带中文字体配置）")
     return 0
 

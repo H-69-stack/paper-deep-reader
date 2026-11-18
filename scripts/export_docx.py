@@ -34,6 +34,8 @@ INLINE_MATH_RE = re.compile(r"\$([^$\n]+)\$")
 BOLD_RE = re.compile(r"\*\*([^*]+)\*\*")
 CODE_SPAN_RE = re.compile(r"`([^`]+)`")
 CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+# ![图 1 xxx](figs/fig1.png) 或带可选标题的写法
+IMAGE_RE = re.compile(r"^!\[([^\]]*)\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\")?\s*\)$")
 
 
 # ---------------------------------------------------------------- markdown 解析
@@ -105,6 +107,13 @@ def parse_blocks(text: str):
         if stripped in {"---", "***", "___"}:
             flush_para()
             blocks.append(("hr", None))
+            i += 1
+            continue
+
+        m = IMAGE_RE.match(stripped)
+        if m:
+            flush_para()
+            blocks.append(("img", (m.group(1).strip(), m.group(2).strip())))
             i += 1
             continue
 
@@ -290,7 +299,7 @@ def build_docx(md_path: Path, out_path: Path, img_dir: Path, keep_images: bool) 
     blocks = parse_blocks(md_path.read_text(encoding="utf-8"))
     img_dir.mkdir(parents=True, exist_ok=True)
     img_no = 0
-    stats = {"formula_img": 0, "formula_text": 0, "table": 0, "code": 0}
+    stats = {"formula_img": 0, "formula_text": 0, "table": 0, "code": 0, "figure": 0, "figure_missing": 0}
 
     def add_text_runs(par, text: str) -> None:
         """把一段文本按 **粗体** / `代码` 拆成 run。"""
@@ -378,6 +387,30 @@ def build_docx(md_path: Path, out_path: Path, img_dir: Path, keep_images: bool) 
                         for run in par.runs:
                             run.bold = True
             stats["table"] += 1
+        elif kind == "img":
+            alt, rel = payload
+            src = (md_path.parent / rel).resolve()
+            if src.is_file():
+                par = doc.add_paragraph()
+                par.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                par.paragraph_format.space_before = Pt(6)
+                par.paragraph_format.space_after = Pt(2)
+                par.add_run().add_picture(str(src), width=Cm(15.0))
+                if alt:
+                    cap = doc.add_paragraph()
+                    cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    cap.paragraph_format.space_after = Pt(8)
+                    cap_run = cap.add_run(plain(alt))
+                    cap_run.font.size = Pt(9)
+                    cap_run.italic = True
+                    cap_run.font.color.rgb = RGBColor(0x44, 0x44, 0x44)
+                stats["figure"] += 1
+            else:
+                par = doc.add_paragraph()
+                run = par.add_run(f"[缺图] {alt or rel}（找不到文件 {rel}）")
+                run.font.size = Pt(9)
+                run.font.color.rgb = RGBColor(0xB0, 0x30, 0x30)
+                stats["figure_missing"] += 1
         elif kind == "hr":
             par = doc.add_paragraph()
             par.paragraph_format.space_before = Pt(2)
@@ -399,8 +432,10 @@ def build_docx(md_path: Path, out_path: Path, img_dir: Path, keep_images: bool) 
     print(f"已生成 {out_path}")
     print(
         "  公式渲成图片 {formula_img} 个 / 退回文本 {formula_text} 个；"
-        "表格 {table} 个；代码块 {code} 个".format(**stats)
+        "表格 {table} 个；代码块 {code} 个；插图 {figure} 张".format(**stats)
     )
+    if stats["figure_missing"]:
+        print(f"  警告：有 {stats['figure_missing']} 张插图找不到文件，已在文档中标红占位。")
     if stats["formula_text"]:
         print("  提示：含中文或 mathtext 不支持环境的公式保留了原始 LaTeX 文本，请在 Word 里用公式编辑器核对。")
 

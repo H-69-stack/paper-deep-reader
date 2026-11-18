@@ -20,9 +20,11 @@
 
 论文精讲固定 **第0～9节共10节**：一句话总览 → 问题背景 → 概念扫盲 → **方法逐模块精讲（占全文≥55%）** → 训练与优化 → 实验结果怎么看 → 创新点 → 局限性与迁移性 → 公式速查表 → 小白FAQ。
 
-配套规则：**10条硬性要求**（禁止跳步、禁止黑话、公式必配手算例子、不编造…）、**16项交付前自检清单**、"公式确实无法手算时"的降级规则（显式说明，不许编数字），以及**论文类型路由**（方法类 / 综述类 / 理论证明类 / 数据集类 / 应用工程类走不同变体结构）、**每节字数预算**、**速览模式**。
+配套规则：**10条硬性要求**（禁止跳步、禁止黑话、公式必配手算例子、不编造…）、**18项交付前自检清单**、"公式确实无法手算时"的降级规则（显式说明，不许编数字），以及**论文类型路由**（方法类 / 综述类 / 理论证明类 / 数据集类 / 应用工程类走不同变体结构）、**每节字数预算**、**速览模式**。
 
 篇幅下限：全文 **≥4500字**，方法部分 **≥2600字 且 ≥全文55%**（下限不是目标，禁止灌水）。
+
+**图表是硬指标**：表格 ≥3 张、插图 ≥1 张，都要编号并在正文被引用（`S13`–`S15` 会查）；插图用 `scripts/make_figures.py` 按 JSON 生成，避免从 PDF 截图。
 
 结构不是靠自觉守的：交付前跑一遍机械校验，`FAIL` 不许宣布完成。
 
@@ -36,7 +38,7 @@ LICENSE                              # MIT
 
 SKILL.md 旁边的三个目录：
 references/
-  deep-reading-template.md           # 必修：10节结构 + 10条硬性要求 + 三段式 + 16项自检 + 类型路由/层级/预算/速览/模式路由
+  deep-reading-template.md           # 必修：10节结构 + 10条硬性要求 + 三段式 + 18项自检 + 类型路由/层级/预算/速览/模式路由/图表规范
   field-glossary.md                  # 术语库索引（按方向挑分册，约300条）
   glossary/                          # 9个分册：signal / ml / dl / llm-agent / phm / objects / metrics / translation / symbols
 assets/
@@ -45,12 +47,13 @@ scripts/
   lint_skill.py                      # 技能自洽性：三副本一致、资源路径存在、术语库索引同步
   check_output.py                    # 成品机械校验：论文精讲 / 算法详解 / 速览三种模式
   extract_pdf.py                     # PDF→markdown + 三项诊断（扫描件/公式丢失/双栏错序）
-  export_docx.py                     # Markdown → .docx（公式渲成图片插入）
-  export_tex.py                      # Markdown → .tex（XeLaTeX / Overleaf 可直接编译）
+  make_figures.py                    # 按 JSON 生成结构图/条形图/折线图/热图（diagram/bar/line/heat）
+  export_docx.py                     # Markdown → .docx（公式渲成图片、插图自动嵌入）
+  export_tex.py                      # Markdown → .tex（XeLaTeX / Overleaf 可直接编译，插图复制进 figs/）
 evals/
   README.md                          # 回归测试说明
   run_evals.py                       # 跑全部案例：合格骨架放行、坏样本拦住
-  fixtures/                          # good-minimal.md、brief.md、algorithm-minimal.md 等
+  fixtures/                          # good-minimal.md、brief.md、algorithm-minimal.md、fig-sample.png 等
 ```
 
 ## 安装
@@ -91,22 +94,28 @@ DSH 会在新会话的技能列表中加载它（技能根目录必须是被加�
 python scripts/extract_pdf.py paper.pdf --report
 python scripts/extract_pdf.py paper.pdf --out paper.md --pages 1-6
 
-# 2. 写完后机械校验（FAIL 必须修）
+# 2. 出图（写正文前/后都可以，图放精讲同目录的 figs/）
+python scripts/make_figures.py diagram spec.json -o figs/fig1.png --title "整体结构"
+python scripts/make_figures.py bar     bleu.json -o figs/fig5.png --title "BLEU 对比" --ylabel BLEU
+python scripts/make_figures.py line    curve.json -o figs/fig6.png --title "学习率曲线"
+python scripts/make_figures.py heat    attn.json  -o figs/fig4.png --title "注意力权重" --cmap Blues --vmin 0 --vmax 1
+
+# 3. 写完后机械校验（FAIL 必须修）
 python scripts/check_output.py 某某论文-精讲.md
 python scripts/check_output.py 某某算法-详解.md --profile algorithm
 python scripts/check_output.py 某某一页纸.md --profile brief
 python scripts/check_output.py 短论文-精讲.md --min-total 3000 --skip-share
 
-# 3. 导出（先有 .md 再导出）
+# 4. 导出（先有 .md 再导出）
 python scripts/export_docx.py 某某论文-精讲.md
 python scripts/export_tex.py  某某论文-精讲.md
 
-# 4. 改过规则或脚本后自检
+# 5. 改过规则或脚本后自检
 python scripts/lint_skill.py
 python evals/run_evals.py
 ```
 
-导出说明：`.docx` 里独立公式会被 matplotlib 渲成图片插入（含中文的公式退回原始 LaTeX 文本，需在 Word 里核对）；`.tex` 用 `ctexart`，**用 XeLaTeX 编译**（Overleaf 里把 Compiler 设为 XeLaTeX），公式与表格原样保留。
+导出说明：`.docx` 里独立公式会被 matplotlib 渲成图片插入，`![图 N …](figs/x.png)` 形式的插图会以 15 cm 宽嵌入并带斜体图注；`.tex` 会把插图复制进 `figs/` 并生成 `\includegraphics` + `\caption`。（含中文的公式退回原始 LaTeX 文本，需在 Word 里核对）；`.tex` 用 `ctexart`，**用 XeLaTeX 编译**（Overleaf 里把 Compiler 设为 XeLaTeX），公式与表格原样保留。
 
 退出码统一为：0 = 无失败项，1 = 有失败项。
 
@@ -126,11 +135,12 @@ python evals/run_evals.py
 - 术语库偏向 **PHM / 故障诊断 / 信号处理**（约 300 条，9 个分册）；其他领域论文走"领域翻译"，但相距过远时只做迁移性分析。
 - `check_output.py` 查得住结构与数字（节完整性、三段式、编号对齐、字数、禁用词、算法模式的章结构），**查不住内容对不对**；那部分仍靠模型判断。
 - 每节字数预算是启发式区间，不是实测统计。
+- 图表检查只数数量和编号，**判断不了图好不好看、表有没有信息量**；图是脚本生成的，复杂示意图仍可能需要手工微调 JSON。
 - 导出不依赖 pandoc/Word：`.docx` 的公式是渲染图（不可再编辑），`.tex` 需要本地或 Overleaf 的 XeLaTeX 才能编译出 PDF。
 
 ## 版本
 
-当前 v0.3.0（2026-11-17）。变更明细见 [CHANGELOG.md](CHANGELOG.md)。
+当前 v0.4.0（2026-11-18）。变更明细见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## License
 
